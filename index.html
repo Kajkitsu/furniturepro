@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FurniturePro — Profesjonalne Planowanie Mebli</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <!-- ═══════════ APP SHELL ═══════════ -->
+    <div id="app" class="app-shell">
+        <!-- TOP BAR -->
+        <header class="topbar" id="topbar">
+            <div class="topbar-left">
+                <div class="logo"><i class="fas fa-couch"></i> FurniturePro</div>
+                <span class="version-tag">v2.0</span>
+            </div>
+            <div class="topbar-tabs" id="furniture-tabs"></div>
+            <div class="topbar-actions" id="topbar-actions">
+                <button class="tb-btn" id="btn-undo" title="Cofnij (Ctrl+Z)" disabled><i class="fas fa-undo"></i></button>
+                <button class="tb-btn" id="btn-redo" title="Ponów (Ctrl+Y)" disabled><i class="fas fa-redo"></i></button>
+                <div class="tb-sep"></div>
+                <button class="tb-btn" id="btn-save-project" title="Zapisz projekt JSON"><i class="fas fa-save"></i> Zapisz</button>
+                <button class="tb-btn" id="btn-load-project" title="Importuj projekt JSON"><i class="fas fa-folder-open"></i> Importuj</button>
+                <div class="tb-sep"></div>
+                <button class="tb-btn" id="btn-materials" title="Materiały i obrzeża"><i class="fas fa-palette"></i> Materiały</button>
+                <button class="tb-btn accent" id="btn-cutting-list" title="Lista formatek"><i class="fas fa-list-ol"></i> Formatki</button>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <div class="main-layout">
+            <!-- LEFT SIDEBAR -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <h3>Projekt</h3>
+                </div>
+
+                <!-- Project info -->
+                <div class="sidebar-section" id="project-section">
+                    <div class="sidebar-label">NAZWA PROJEKTU</div>
+                    <input type="text" class="s-input" id="project-name" value="Mój projekt" placeholder="Nazwa projektu">
+                    <div class="sidebar-label" style="margin-top:8px">POMIESZCZENIE</div>
+                    <input type="text" class="s-input" id="project-room" value="" placeholder="np. Kuchnia">
+                </div>
+
+                <!-- Furniture list -->
+                <div class="sidebar-section flex-1">
+                    <div class="sidebar-label">MEBLE <span id="furniture-count">(0)</span></div>
+                    <div id="furniture-list" class="furniture-list"></div>
+                </div>
+
+                <!-- Quick actions -->
+                <div class="sidebar-footer">
+                    <button class="sf-btn sf-btn-accent" id="btn-add-cabinet"><i class="fas fa-plus"></i> <i class="fas fa-box"></i> Szafka</button>
+                    <button class="sf-btn sf-btn-accent" id="btn-add-shelf"><i class="fas fa-plus"></i> <i class="fas fa-columns"></i> Regał</button>
+                    <button class="sf-btn sf-btn-muted" id="btn-add-drawer" disabled title="Wkrótce dostępne"><i class="fas fa-plus"></i> <i class="fas fa-inbox"></i> Komoda</button>
+                    <button class="sf-btn sf-btn-accent" id="btn-add-panel"><i class="fas fa-plus"></i> <i class="fas fa-square"></i> Płyta</button>
+                </div>
+            </aside>
+
+            <!-- CENTER: 3D VIEWPORT -->
+            <main class="viewport-container" id="viewport-container">
+                <canvas id="viewport-canvas"></canvas>
+
+                <!-- Viewport toolbar -->
+                <div class="vp-toolbar" id="vp-toolbar">
+                    <button class="vp-btn active" data-view="perspective" title="Perspektywa"><i class="fas fa-cube"></i></button>
+                    <button class="vp-btn" data-view="front" title="Przód"><i class="fas fa-square"></i> P</button>
+                    <button class="vp-btn" data-view="top" title="Góra"><i class="fas fa-square"></i> G</button>
+                    <button class="vp-btn" data-view="right" title="Prawo"><i class="fas fa-square"></i> B</button>
+                    <div class="vp-sep"></div>
+                    <button class="vp-btn" id="btn-toggle-grid" title="Siatka"><i class="fas fa-th"></i></button>
+                    <button class="vp-btn" id="btn-toggle-labels" title="Etykiety elementów"><i class="fas fa-tags"></i></button>
+                    <button class="vp-btn" id="btn-toggle-back" title="Pokaż/ukryj plecy"><i class="fas fa-eye"></i></button>
+                    <button class="vp-btn" id="btn-exploded" title="Exploded view"><i class="fas fa-expand-arrows-alt"></i></button>
+                    <button class="vp-btn" id="btn-toggle-doors" title="Otwórz/zamknij drzwi"><i class="fas fa-door-open"></i></button>
+                    <button class="vp-btn" id="btn-fit-view" title="Dopasuj widok"><i class="fas fa-compress-arrows-alt"></i></button>
+                </div>
+
+                <!-- Mouse controls hint -->
+                <div class="vp-hint" id="vp-hint">
+                    <span><i class="fas fa-mouse-pointer"></i> LPM: obracanie</span>
+                    <span>PPM: przesuwanie</span>
+                    <span>Scroll: zoom</span>
+                    <span>2×klik: dopasuj widok</span>
+                </div>
+
+                <!-- Status bar -->
+                <div class="vp-status" id="vp-status">
+                    <span id="vp-status-dims">—</span>
+                    <span id="vp-status-info">Kliknij element w 3D aby go zaznaczyć</span>
+                </div>
+
+                <!-- Empty state -->
+                <div class="vp-empty" id="vp-empty">
+                    <i class="fas fa-couch"></i>
+                    <h2>Rozpocznij projektowanie</h2>
+                    <p>Dodaj pierwszy mebel używając przycisków po lewej stronie lub kliknij poniżej</p>
+                    <button class="btn-accent" id="btn-empty-new"><i class="fas fa-plus"></i> Nowy mebel</button>
+                </div>
+            </main>
+
+            <!-- RIGHT PANEL: PROPERTIES -->
+            <aside class="props-panel" id="props-panel">
+                <div class="props-header" id="props-header">
+                    <h3>Właściwości</h3>
+                    <div class="props-header-actions" id="props-header-actions"></div>
+                </div>
+                <div class="props-body" id="props-body">
+                    <div class="props-empty">
+                        <i class="fas fa-mouse-pointer"></i>
+                        <p>Zaznacz element w widoku 3D lub na liście</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- ═══════════ MODAL: NEW FURNITURE ═══════════ -->
+    <div class="modal-overlay" id="modal-new-furniture" style="display:none">
+        <div class="modal" style="max-width:720px">
+            <div class="modal-header">
+                <h2><i class="fas fa-plus-circle"></i> Nowy mebel</h2>
+                <button class="modal-close" data-close-modal><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group full">
+                        <label>Nazwa mebla</label>
+                        <input type="text" id="nf-name" value="Szafka" placeholder="np. Szafka kuchenna dolna">
+                    </div>
+                </div>
+                <input type="hidden" id="nf-type" value="cabinet">
+                <div class="form-row">
+                    <div class="form-group full">
+                        <label>Materiał płyty</label>
+                        <select id="nf-material"></select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Szerokość (mm)</label>
+                        <input type="number" id="nf-width" value="800" min="100" max="3000" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Wysokość (mm)</label>
+                        <input type="number" id="nf-height" value="720" min="100" max="3000" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Głębokość (mm)</label>
+                        <input type="number" id="nf-depth" value="560" min="100" max="1200" step="1">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group full">
+                        <label>Obrzeże</label>
+                        <select id="nf-edge-band"></select>
+                    </div>
+                </div>
+
+                <!-- Cabinet/Shelf shared options -->
+                <div id="nf-cabinet-opts" class="form-section">
+                    <h4><i class="fas fa-th-list"></i> Opcje konstrukcji</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Liczba półek</label>
+                            <input type="number" id="nf-shelves" value="2" min="0" max="20" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Cofnięcie półek od przodu (mm)</label>
+                            <input type="number" id="nf-back-offset" value="0" min="0" max="100" step="1">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Plecy mebla</label>
+                            <select id="nf-back-material">
+                                <option value="none">Brak</option>
+                                <option value="hdf3" selected>HDF 3mm</option>
+                                <option value="plate18">Płyta 18mm</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Maskownica górna</label>
+                            <select id="nf-top-option">
+                                <option value="none">Brak</option>
+                                <option value="maskownica">Maskownica</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Cokół / maskownica dolna</label>
+                            <select id="nf-baseboard-type">
+                                <option value="none">Brak</option>
+                                <option value="maskownica">Maskownica</option>
+                                <option value="cokol">Cokół</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="nf-baseboard-h-group" style="display:none">
+                            <label>Wysokość (mm)</label>
+                            <input type="number" id="nf-baseboard-h" value="100" min="50" max="200" step="1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Door options (cabinet only) -->
+                <div id="nf-door-opts" class="form-section" style="display:none">
+                    <h4><i class="fas fa-door-open"></i> Drzwiczki</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Liczba drzwi</label>
+                            <select id="nf-door-count">
+                                <option value="1">1 drzwi</option>
+                                <option value="2">2 drzwi</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row" id="nf-door-gaps-row">
+                        <div class="form-group">
+                            <label>Luz góra (mm)</label>
+                            <input type="number" id="nf-door-gap-top" value="2" min="0" max="10" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label>Luz dół (mm)</label>
+                            <input type="number" id="nf-door-gap-bottom" value="2" min="0" max="10" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label>Luz lewo (mm)</label>
+                            <input type="number" id="nf-door-gap-left" value="2" min="0" max="10" step="0.5">
+                        </div>
+                        <div class="form-group">
+                            <label>Luz prawo (mm)</label>
+                            <input type="number" id="nf-door-gap-right" value="2" min="0" max="10" step="0.5">
+                        </div>
+                    </div>
+                    <div class="form-row" id="nf-door-between-row" style="display:none">
+                        <div class="form-group">
+                            <label>Luz między drzwiami (mm)</label>
+                            <input type="number" id="nf-door-gap-between" value="3" min="0" max="10" step="0.5">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Drawer-specific options -->
+                <div id="nf-drawer-opts" class="form-section" style="display:none">
+                    <h4><i class="fas fa-inbox"></i> Opcje komody</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Liczba szuflad</label>
+                            <input type="number" id="nf-drawers-count" value="3" min="1" max="10" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Wysokość czoła szuflady (mm)</label>
+                            <input type="number" id="nf-drawer-front-h" value="200" min="80" max="400" step="1">
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-close-modal>Anuluj</button>
+                <button class="btn-accent" id="btn-create-furniture"><i class="fas fa-check"></i> Utwórz mebel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ MODAL: CUTTING LIST ═══════════ -->
+    <div class="modal-overlay" id="modal-cutting-list" style="display:none">
+        <div class="modal modal-xl">
+            <div class="modal-header">
+                <h2><i class="fas fa-list-ol"></i> Lista formatek</h2>
+                <div class="modal-header-actions">
+                    <label class="check-label"><input type="checkbox" id="cl-aggregate" checked> Agreguj identyczne</label>
+                    <select id="cl-furniture-filter" class="tb-select" title="Filtruj po meblu">
+                        <option value="">Wszystkie meble</option>
+                    </select>
+                </div>
+                <button class="modal-close" data-close-modal><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding:0">
+                <div id="cutting-list-content"></div>
+            </div>
+            <div class="modal-footer">
+                <div id="cl-summary" class="cl-summary"></div>
+                <div id="cl-export-buttons" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+                <button class="btn-ghost" data-close-modal>Zamknij</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ MODAL: ORDER SUMMARY ═══════════ -->
+    <div class="modal-overlay" id="modal-order" style="display:none">
+        <div class="modal modal-xl">
+            <div class="modal-header">
+                <h2><i class="fas fa-shopping-cart"></i> Zamówienie formatek</h2>
+                <button class="modal-close" data-close-modal><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="order-content"></div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-close-modal>Zamknij</button>
+                <button class="btn-primary" id="btn-download-order"><i class="fas fa-download"></i> Pobierz paczkę CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ MODAL: MATERIALS & EDGE BANDS ═══════════ -->
+    <div class="modal-overlay" id="modal-materials" style="display:none">
+        <div class="modal modal-xl">
+            <div class="modal-header">
+                <h2><i class="fas fa-palette"></i> Materiały i obrzeża</h2>
+                <div class="modal-header-actions">
+                    <button class="btn-ghost" id="btn-mat-import"><i class="fas fa-folder-open"></i> Importuj</button>
+                    <button class="btn-ghost" id="btn-mat-export"><i class="fas fa-download"></i> Eksportuj</button>
+                </div>
+                <button class="modal-close" data-close-modal><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding:0">
+                <div class="mat-tabs">
+                    <button class="mat-tab active" data-mat-tab="materials"><i class="fas fa-layer-group"></i> Płyty</button>
+                    <button class="mat-tab" data-mat-tab="edges"><i class="fas fa-border-style"></i> Obrzeża</button>
+                </div>
+                <div id="mat-tab-materials" class="mat-tab-content">
+                    <div id="mat-list-materials" class="mat-list"></div>
+                    <div class="mat-add-row">
+                        <button class="btn-accent" id="btn-add-material"><i class="fas fa-plus"></i> Dodaj płytę</button>
+                    </div>
+                </div>
+                <div id="mat-tab-edges" class="mat-tab-content" style="display:none">
+                    <div id="mat-list-edges" class="mat-list"></div>
+                    <div class="mat-add-row">
+                        <button class="btn-accent" id="btn-add-edge"><i class="fas fa-plus"></i> Dodaj obrzeże</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-ghost" data-close-modal>Zamknij</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for JSON import -->
+    <input type="file" id="file-import" accept=".json" style="display:none">
+    <input type="file" id="file-import-materials" accept=".json" style="display:none">
+
+    <!-- ═══════════ NOTIFICATION CONTAINER ═══════════ -->
+    <div id="notifications"></div>
+
+    <!-- ═══════════ SCRIPTS ═══════════ -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="js/store.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/viewport.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
